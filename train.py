@@ -26,7 +26,7 @@ df_val = df_val.dropna()
 df_val = df_val[df_val["label"] != -1]  # Important: Filter unsupported labels
 
 # Initialize pre-trained tokenizer
-model_name = "microsoft/MiniLM-L6-H384-uncased"
+model_name = "microsoft/MiniLM-L12-H384-uncased"
 hf_tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 # Define metrics
