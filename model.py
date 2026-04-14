@@ -1,23 +1,29 @@
 import torch
 import torch.nn as nn
-from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 from transformers.modeling_outputs import SequenceClassifierOutput
-from transformers import PreTrainedModel, PretrainedConfig
+from transformers import PreTrainedModel, PretrainedConfig, AutoModel
+
 
 def collate_fn(batch):
-    input_ids = torch.tensor([x["input_ids"] for x in batch])
-    lengths = torch.tensor([len(x["input_ids"]) for x in batch])
+    # Update: Add attention_mask for Transformer-based model
+    input_ids = torch.stack([torch.tensor(x["input_ids"]) for x in batch])
+    attention_mask = torch.stack([torch.tensor(x["attention_mask"]) for x in batch])
     labels = torch.tensor([int(x["labels"]) for x in batch])
-    return {"input_ids": input_ids, "lengths":lengths, "labels": labels}
+    return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
 
-def tokenizes(examples, tokenizer):
-    return tokenizer(examples, truncation=True, max_length=128, padding="max_length")
-	
+
 class NLIConfig(PretrainedConfig):
     model_type = "NLI"
-    def __init__(self, vocab_size=20000, hidden_size=1024, nclass=3, **kwargs):
-        super().__init__()
-        self.vocab_size = vocab_size
+
+    def __init__(
+        self,
+        pretrained_name="microsoft/MiniLM-L6-H384-uncased",
+        hidden_size=384,
+        nclass=3,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.pretrained_name = pretrained_name
         self.hidden_size = hidden_size
         self.nclass = nclass
 
@@ -28,30 +34,28 @@ class NLI(PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.config = config
-        self.embedding = nn.Embedding(config.vocab_size, config.hidden_size)
-        self.lstm = nn.LSTM(config.hidden_size, config.hidden_size, batch_first=True)
+
+        # Init core encoder from pretrained model instead of LSTM
+        self.encoder = AutoModel.from_pretrained(config.pretrained_name)
+
+        # Add linear output layer for classification
         self.fc = nn.Linear(config.hidden_size, config.nclass)
         self.loss_fct = nn.CrossEntropyLoss()
+
         self.post_init()
 
-    def forward(self, input_ids, lengths, labels=None, **kwargs):
-        # 1. Forward pass
-        x = self.embedding(input_ids)
+    def forward(self, input_ids, attention_mask=None, labels=None, **kwargs):
+        # 1. Forward pass through core model
+        outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
 
-        packed = pack_padded_sequence(
-            x,
-            lengths.to("cpu"),
-            batch_first=True,
-            enforce_sorted=False
-        )
+        # 2. Get last_hidden_state vector with shape (batch_size, sequence_length, hidden_size)
+        pooled_output = outputs.last_hidden_state[:, 0, :]
 
-        output, (h, c) = self.lstm(x)
-        h = torch.squeeze(h)
-        logits = self.fc(h) # (batch, seq_len, vocab_size)
+        # 3. Classify
+        logits = self.fc(pooled_output)  # (batch_size, nclass)
 
         loss = None
         if labels is not None:
             loss = self.loss_fct(logits, labels)
 
         return SequenceClassifierOutput(loss=loss, logits=logits)
-
