@@ -17,7 +17,7 @@ class NLIConfig(PretrainedConfig):
 
     def __init__(
         self,
-        pretrained_name="nreimers/MiniLM-L6-H384-uncased",
+        pretrained_name="microsoft/MiniLM-L12-H384-uncased",
         hidden_size=384,
         nclass=3,
         **kwargs

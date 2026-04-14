@@ -5,9 +5,14 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer, Trainer, TrainingArguments
 from datasets import load_dataset, Dataset
+from huggingface_hub import login
+
 import evaluate
 
 from model import NLI, NLIConfig, collate_fn
+
+# huggingface authentication
+huggingface-cli login
 
 # Load and read dataset
 mnli = load_dataset("nyu-mll/multi_nli")

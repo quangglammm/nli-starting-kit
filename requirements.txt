@@ -8,3 +8,4 @@ pandas>=2.0.0
 scikit-learn>=1.3.0
 accelerate>=0.27.0
 sentencepiece>=0.1.99
+huggingface_hub
