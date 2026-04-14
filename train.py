@@ -84,9 +84,9 @@ def compute_metrics(results):
 	res["f1"] = metric.compute(predictions=pred, references=targ, average="macro")["f1"]
 	return res
 	
-tokenized_train = (df_train["premise"] + " [SEP] " + df_train["hypothesis"]).apply(tokenizes)
+tokenized_train = (df_train["premise"] + " [CLS] " + df_train["hypothesis"]).apply(tokenizes)
 train_set = Dataset.from_dict({"input_ids":[t["input_ids"] for t in tokenized_train], "labels":df_train["label"]})
-tokenized_val = (df_val["premise"] + " [SEP] " + df_val["hypothesis"]).apply(tokenizes)
+tokenized_val = (df_val["premise"] + " [CLS] " + df_val["hypothesis"]).apply(tokenizes)
 val_set = Dataset.from_dict({"input_ids":[t["input_ids"] for t in tokenized_val], "labels":df_val["label"]})
 
 model = NLI(NLIConfig(vocab_size=len(hf_tokenizer.get_vocab())))
